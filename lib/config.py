@@ -43,6 +43,9 @@ __C.LI_FUSION.POINT_CHANNELS = [96, 256, 512, 1024]
 __C.LI_FUSION.DeConv_Reduce = [16, 16, 16, 16]
 __C.LI_FUSION.DeConv_Kernels = [2, 4, 8, 16]
 __C.LI_FUSION.DeConv_Strides = [2, 4, 8, 16]
+__C.LI_FUSION.IMG_FLIP = False
+__C.LI_FUSION.IMG_LOCATION = False
+__C.LI_FUSION.IMG_AUG = False
 
 
 # 1. config of rpn network
@@ -259,7 +262,7 @@ def cfg_from_list(cfg_list):
             assert subkey in d
             d = d[subkey]
         subkey = key_list[-1]
-        assert subkey in d
+        assert subkey in d, '%s'%subkey
         try:
             value = literal_eval(v)
         except:
@@ -276,7 +279,8 @@ def save_config_to_file(cfg, pre = 'cfg', logger = None):
             if logger is not None:
                 logger.info('\n%s.%s = edict()' % (pre, key))
             else:
-                print('\n%s.%s = edict()' % (pre, key))
+                pass
+                # print('\n%s.%s = edict()' % (pre, key))
             save_config_to_file(cfg[key], pre = pre + '.' + key, logger = logger)
             continue
 

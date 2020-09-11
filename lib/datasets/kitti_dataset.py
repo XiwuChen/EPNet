@@ -34,27 +34,6 @@ class KittiDataset(torch_data.Dataset):
         assert os.path.exists(img_file)
         return cv2.imread(img_file)  # (H, W, 3) BGR mode
 
-    def get_image_rgb_with_normal(self, idx):
-        """
-        return img with normalization in rgb mode
-        :param idx:
-        :return: imback(H,W,3)
-        """
-        img_file = os.path.join(self.image_dir, '%06d.png' % idx)
-        assert os.path.exists(img_file)
-        im = Image.open(img_file).convert('RGB')
-        im = np.array(im).astype(np.float)
-        im = im / 255.0
-        im -= self.mean
-        im /= self.std
-        #print(im.shape)
-        # ~[-2,2]
-        # im = im[:, :, ::-1]
-        # make same size padding with 0
-        imback = np.zeros([384, 1280, 3], dtype = np.float)
-        imback[:im.shape[0], :im.shape[1], :] = im
-
-        return imback  # (H,W,3) RGB mode
 
     def get_image_shape_with_padding(self, idx = 0):
         return 384, 1280, 3

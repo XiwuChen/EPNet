@@ -18,11 +18,11 @@ def model_joint_fn_decorator():
 
             if not cfg.RPN.FIXED:
                 rpn_cls_label, rpn_reg_label = data['rpn_cls_label'], data['rpn_reg_label']
-                rpn_cls_label = torch.from_numpy(rpn_cls_label).cuda(non_blocking = True).long()
-                rpn_reg_label = torch.from_numpy(rpn_reg_label).cuda(non_blocking = True).float()
+                rpn_cls_label = torch.from_numpy(rpn_cls_label).long().cuda()
+                rpn_reg_label = torch.from_numpy(rpn_reg_label).float().cuda()
 
-            inputs = torch.from_numpy(pts_input).cuda(non_blocking = True).float()
-            gt_boxes3d = torch.from_numpy(gt_boxes3d).cuda(non_blocking = True).float()
+            inputs = torch.from_numpy(pts_input).float().cuda()
+            gt_boxes3d = torch.from_numpy(gt_boxes3d).float().cuda()
             input_data = { 'pts_input': inputs, 'gt_boxes3d': gt_boxes3d }
         else:
             input_data = { }
@@ -34,17 +34,17 @@ def model_joint_fn_decorator():
                 input_data['pts_input'] = pts_input
         # input()
         if cfg.LI_FUSION.ENABLED:
-            img = torch.from_numpy(data['img']).cuda(non_blocking = True).float().permute((0, 3, 1, 2))
-            pts_origin_xy = torch.from_numpy(data['pts_origin_xy']).cuda(non_blocking = True).float()
+            img = torch.from_numpy(data['img']).float().cuda().permute((0, 3, 1, 2))
+            pts_origin_xy = torch.from_numpy(data['pts_origin_xy']).cuda().float()
             input_data['img'] = img
             input_data['pts_origin_xy'] = pts_origin_xy
         if cfg.RPN.USE_RGB or cfg.RCNN.USE_RGB:
             pts_rgb = data['rgb']
             # print(pts_rgb.shape)
-            pts_rgb = torch.from_numpy(pts_rgb).cuda(non_blocking = True).float()
+            pts_rgb = torch.from_numpy(pts_rgb).cuda().float()
             input_data['pts_rgb'] = pts_rgb
         ret_dict = model(input_data)
-
+        # print('rec_dict.keys()',ret_dict.keys())
         tb_dict = { }
         disp_dict = { }
         loss = 0
@@ -90,7 +90,7 @@ def model_joint_fn_decorator():
         return ModelReturn(loss, tb_dict, disp_dict)
 
     def get_rpn_loss(model, rpn_cls, rpn_reg, rpn_cls_label, rpn_reg_label, tb_dict):
-        if isinstance(model, nn.DataParallel):
+        if isinstance(model, (nn.DataParallel,nn.parallel.DistributedDataParallel)):
             rpn_cls_loss_func = model.module.rpn.rpn_cls_loss_func
         else:
             rpn_cls_loss_func = model.rpn.rpn_cls_loss_func
@@ -151,7 +151,7 @@ def model_joint_fn_decorator():
         else:
             # loss_loc = loss_angle = loss_size = rpn_loss_reg = rpn_loss_cls * 0
             loss_loc = loss_angle = loss_size = loss_iou = rpn_loss_reg = rpn_loss_cls * 0
-
+        # loss_loc = loss_angle = loss_size = loss_iou = rpn_loss_reg = rpn_loss_cls * 0
         rpn_loss = rpn_loss_cls * cfg.RPN.LOSS_WEIGHT[0] + rpn_loss_reg * cfg.RPN.LOSS_WEIGHT[1]
 
         tb_dict.update({ 'rpn_loss_cls'  : rpn_loss_cls.item(), 'rpn_loss_reg': rpn_loss_reg.item(),
@@ -175,7 +175,7 @@ def model_joint_fn_decorator():
         gt_iou_weight = ret_dict['gt_iou']
 
         # rcnn classification loss
-        if isinstance(model, nn.DataParallel):
+        if isinstance(model, (nn.DataParallel,nn.parallel.DistributedDataParallel)):
             cls_loss_func = model.module.rcnn_net.cls_loss_func
         else:
             cls_loss_func = model.rcnn_net.cls_loss_func
@@ -261,7 +261,7 @@ def model_joint_fn_decorator():
             tb_dict.update(reg_loss_dict)
         else:
             loss_loc = loss_angle = loss_size = loss_iou = rcnn_loss_reg = iou_branch_loss = rcnn_loss_cls * 0
-
+        # loss_loc = loss_angle = loss_size = loss_iou = rcnn_loss_reg = iou_branch_loss = rcnn_loss_cls * 0
         rcnn_loss = rcnn_loss_cls + rcnn_loss_reg
         tb_dict['rcnn_loss_cls'] = rcnn_loss_cls.item()
         tb_dict['rcnn_loss_reg'] = rcnn_loss_reg.item()

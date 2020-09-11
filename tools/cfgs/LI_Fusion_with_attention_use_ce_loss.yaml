@@ -34,6 +34,10 @@ LI_FUSION:
     DeConv_Kernels: [2, 4, 8, 16]
     DeConv_Strides: [2, 4, 8, 16]
 
+    IMG_FLIP: False
+    IMG_LOCATION: False
+    IMG_AUG: False
+
 # 1. config of rpn network
 RPN:
     ENABLED: True
