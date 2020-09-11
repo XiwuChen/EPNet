@@ -112,7 +112,7 @@ def load_part_ckpt(model, filename, logger = cur_logger, total_keys = -1):
 class Trainer(object):
     def __init__(self, model, model_fn, optimizer, ckpt_dir, lr_scheduler, bnm_scheduler,
                  model_fn_eval, tb_log, eval_frequency = 1, lr_warmup_scheduler = None, warmup_epoch = -1,
-                 grad_norm_clip = 1.0):
+                 grad_norm_clip = 1.0,rank =0,train_sampler=None):
         self.model, self.model_fn, self.optimizer, self.lr_scheduler, self.bnm_scheduler, self.model_fn_eval = \
             model, model_fn, optimizer, lr_scheduler, bnm_scheduler, model_fn_eval
 
@@ -122,6 +122,8 @@ class Trainer(object):
         self.lr_warmup_scheduler = lr_warmup_scheduler
         self.warmup_epoch = warmup_epoch
         self.grad_norm_clip = grad_norm_clip
+        self.rank = rank
+        self.train_sampler =None
 
     def _train_it(self, batch):
         self.model.train()
@@ -170,23 +172,37 @@ class Trainer(object):
         eval_frequency = self.eval_frequency if self.eval_frequency > 0 else 1
 
         it = start_it
-        with tqdm.trange(start_epoch, n_epochs, desc = 'epochs') as tbar, \
-                tqdm.tqdm(total = len(train_loader), leave = False, desc = 'train') as pbar:
+        with tqdm.trange(start_epoch, n_epochs, desc = 'epochs',dynamic_ncols=True,leave=(self.rank==0)) as tbar:
 
             for epoch in tbar:
+                if self.train_sampler is not None:
+                    self.train_sampler.set_epoch(epoch)
                 if self.lr_scheduler is not None and self.warmup_epoch <= epoch and (not lr_scheduler_each_iter):
                     self.lr_scheduler.step(epoch)
 
                 if self.bnm_scheduler is not None:
                     self.bnm_scheduler.step(it)
-                    self.tb_log.add_scalar('bn_momentum', self.bnm_scheduler.lmbd(epoch), it)
+                    if self.tb_log is not None:
+                        self.tb_log.add_scalar('bn_momentum', self.bnm_scheduler.lmbd(epoch), it)
 
                 # train one epoch
-                for cur_it, batch in enumerate(train_loader):
+                if self.rank == 0:
+                    pbar = tqdm.tqdm(total=len(train_loader),leave=False, desc='train', dynamic_ncols=True)
+                    pbar.set_postfix(dict(total_it=it))
+                dataloader_iter = iter(train_loader)
+                for cur_it in range(len(train_loader)):
+                    try:
+                        batch = next(dataloader_iter)
+                    except StopIteration:
+                        dataloader_iter = iter(train_loader)
+                        batch = next(dataloader_iter)
+                        print('new iters')
+
                     if lr_scheduler_each_iter:
                         self.lr_scheduler.step(it)
                         cur_lr = float(self.optimizer.lr)
-                        self.tb_log.add_scalar('learning_rate', cur_lr, it)
+                        if self.tb_log is not None:
+                            self.tb_log.add_scalar('learning_rate', cur_lr, it)
                     else:
                         if self.lr_warmup_scheduler is not None and epoch < self.warmup_epoch:
                             self.lr_warmup_scheduler.step(it)
@@ -196,43 +212,44 @@ class Trainer(object):
 
                     loss, tb_dict, disp_dict = self._train_it(batch)
                     it += 1
+                    if self.rank==0:
+                        disp_dict.update({ 'loss': loss, 'lr': cur_lr })
 
-                    disp_dict.update({ 'loss': loss, 'lr': cur_lr })
+                        # log to console and tensorboard
+                        pbar.update()
+                        pbar.set_postfix(dict(total_it = it))
+                        tbar.set_postfix(disp_dict)
+                        tbar.refresh()
 
-                    # log to console and tensorboard
-                    pbar.update()
-                    pbar.set_postfix(dict(total_it = it))
-                    tbar.set_postfix(disp_dict)
-                    tbar.refresh()
-
-                    if self.tb_log is not None:
-                        self.tb_log.add_scalar('train_loss', loss, it)
-                        self.tb_log.add_scalar('learning_rate', cur_lr, it)
-                        for key, val in tb_dict.items():
-                            self.tb_log.add_scalar('train_' + key, val, it)
+                        if self.tb_log is not None:
+                            self.tb_log.add_scalar('train_loss', loss, it)
+                            self.tb_log.add_scalar('learning_rate', cur_lr, it)
+                            for key, val in tb_dict.items():
+                                self.tb_log.add_scalar('train_' + key, val, it)
 
                 # save trained model
                 trained_epoch = epoch + 1
-                if trained_epoch % ckpt_save_interval == 0:
+                if trained_epoch % ckpt_save_interval == 0 and self.rank==0:
                     ckpt_name = os.path.join(self.ckpt_dir, 'checkpoint_epoch_%d' % trained_epoch)
                     save_checkpoint(
                             checkpoint_state(self.model, self.optimizer, trained_epoch, it), filename = ckpt_name,
                     )
-
-                # eval one epoch
-                if (epoch % eval_frequency) == 0:
+                # FIXME: forbid eval when training now.
+                # # eval one epoch
+                # if (epoch % eval_frequency) == 0:
+                #     if self.rank==0:
+                #         pbar.close()
+                #     if test_loader is not None:
+                #         with torch.set_grad_enabled(False):
+                #             val_loss, eval_dict, cur_performance = self.eval_epoch(test_loader)
+                #
+                #         if self.tb_log is not None and self.rank==0:
+                #             self.tb_log.add_scalar('val_loss', val_loss, it)
+                #             for key, val in eval_dict.items():
+                #                 self.tb_log.add_scalar('val_' + key, val, it)
+                if self.rank ==0:
                     pbar.close()
-                    if test_loader is not None:
-                        with torch.set_grad_enabled(False):
-                            val_loss, eval_dict, cur_performance = self.eval_epoch(test_loader)
+                # pbar = tqdm.tqdm(total = len(train_loader), leave = False, desc = 'train')
 
-                        if self.tb_log is not None:
-                            self.tb_log.add_scalar('val_loss', val_loss, it)
-                            for key, val in eval_dict.items():
-                                self.tb_log.add_scalar('val_' + key, val, it)
-
-                pbar.close()
-                pbar = tqdm.tqdm(total = len(train_loader), leave = False, desc = 'train')
-                pbar.set_postfix(dict(total_it = it))
 
         return None
