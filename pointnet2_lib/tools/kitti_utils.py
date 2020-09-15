@@ -62,7 +62,7 @@ class Object3d(object):
         corners3d = np.vstack([x_corners, y_corners, z_corners])  # (3, 8)
         corners3d = np.dot(R, corners3d).T
         corners3d = corners3d + self.pos
-        return corners3d
+        return
 
     def to_str(self):
         print_str = '%s %.3f %.3f %.3f box2d: %s hwl: [%.3f %.3f %.3f] pos: %s ry: %.3f' \

@@ -783,7 +783,7 @@ class KittiRCNNDataset(KittiDataset):
             aug_pts_rect[:, 0] = -aug_pts_rect[:, 0]
             aug_gt_boxes3d[:, 0] = -aug_gt_boxes3d[:, 0]
             if ret_pts_origin_xy is not None:
-                ret_pts_origin_xy[:, 0] = 1280. - ret_pts_origin_xy[:, 0]
+                ret_pts_origin_xy[:, 0] = 1279. - ret_pts_origin_xy[:, 0]
                 img = img[:, ::-1, :]
             # flip orientation: ry > 0: pi - ry, ry < 0: -pi - ry
             if stage == 1:

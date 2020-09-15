@@ -225,6 +225,7 @@ if __name__ == "__main__":
         os.system('cp %s %s/' % (args.cfg_file, backup_dir))
 
     log_file = os.path.join(root_result_dir, 'log_train.txt')
+    torch.distributed.barrier()
     logger = create_logger(log_file, cfg.LOCAL_RANK)
     logger.info('**********************Start logging**********************')
 
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     if args.train_with_eval:
         test_set, test_loader, sampler = create_dataloader(logger, training=False, dist=dist_train)
     # model = PointRCNN(num_classes=train_loader.dataset.num_class, use_xyz=True, mode='TRAIN')
-    fn_decorator = train_functions.model_joint_fn_decorator()
+    fn_decorator = train_functions.model_joint_fn_dist_decorator()
 
     model = PointRCNN(num_classes=train_loader.dataset.num_class, use_xyz=True, mode='TRAIN')
     model.cuda()
@@ -298,7 +299,8 @@ if __name__ == "__main__":
         eval_frequency=1,
         lr_warmup_scheduler=lr_warmup_scheduler,
         warmup_epoch=cfg.TRAIN.WARMUP_EPOCH,
-        grad_norm_clip=cfg.TRAIN.GRAD_NORM_CLIP
+        grad_norm_clip=cfg.TRAIN.GRAD_NORM_CLIP,
+        rank=args.local_rank
     )
 
     trainer.train(

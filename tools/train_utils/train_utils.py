@@ -123,6 +123,7 @@ class Trainer(object):
         self.warmup_epoch = warmup_epoch
         self.grad_norm_clip = grad_norm_clip
         self.rank = rank
+        print('Trainer rank: ',self.rank)
         self.train_sampler =None
 
     def _train_it(self, batch):
@@ -234,22 +235,9 @@ class Trainer(object):
                     save_checkpoint(
                             checkpoint_state(self.model, self.optimizer, trained_epoch, it), filename = ckpt_name,
                     )
-                # FIXME: forbid eval when training now.
-                # # eval one epoch
-                # if (epoch % eval_frequency) == 0:
-                #     if self.rank==0:
-                #         pbar.close()
-                #     if test_loader is not None:
-                #         with torch.set_grad_enabled(False):
-                #             val_loss, eval_dict, cur_performance = self.eval_epoch(test_loader)
-                #
-                #         if self.tb_log is not None and self.rank==0:
-                #             self.tb_log.add_scalar('val_loss', val_loss, it)
-                #             for key, val in eval_dict.items():
-                #                 self.tb_log.add_scalar('val_' + key, val, it)
+
                 if self.rank ==0:
                     pbar.close()
-                # pbar = tqdm.tqdm(total = len(train_loader), leave = False, desc = 'train')
 
 
         return None

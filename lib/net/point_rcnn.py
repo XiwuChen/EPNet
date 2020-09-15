@@ -24,6 +24,7 @@ class PointRCNN(nn.Module):
             else:
                 raise NotImplementedError
 
+
     def forward(self, input_data):
 
         if cfg.RPN.ENABLED:
