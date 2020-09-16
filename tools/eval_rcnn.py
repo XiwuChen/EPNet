@@ -793,6 +793,7 @@ def eval_single_ckpt(root_result_dir):
     # set epoch_id and output dir
     num_list = re.findall(r'\d+', args.ckpt) if args.ckpt is not None else []
     epoch_id = num_list[-1] if num_list.__len__() > 0 else 'no_number'
+    assert epoch_id!='no_number','Error epoch id'
     root_result_dir = os.path.join(root_result_dir, 'epoch_%s' % epoch_id, cfg.TEST.SPLIT)
     if args.test:
         root_result_dir = os.path.join(root_result_dir, 'test_mode')

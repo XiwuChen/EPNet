@@ -58,7 +58,7 @@ class CosineWarmupLR(lr_sched._LRScheduler):
 def checkpoint_state(model = None, optimizer = None, epoch = None, it = None):
     optim_state = optimizer.state_dict() if optimizer is not None else None
     if model is not None:
-        if isinstance(model, torch.nn.DataParallel):
+        if isinstance(model, (torch.nn.DataParallel,torch.nn.parallel.DistributedDataParallel)):
             model_state = model.module.state_dict()
         else:
             model_state = model.state_dict()
@@ -80,7 +80,17 @@ def load_checkpoint(model = None, optimizer = None, filename = 'checkpoint', log
         epoch = checkpoint['epoch'] if 'epoch' in checkpoint.keys() else -1
         it = checkpoint.get('it', 0.0)
         if model is not None and checkpoint['model_state'] is not None:
-            model.load_state_dict(checkpoint['model_state'])
+            # check module prefix
+            checkpoint_state = checkpoint['model_state']
+            if len(checkpoint_state.keys())>0 and 'module.' in list(checkpoint_state.keys())[0]:
+                new_state_dict={}
+                for k in checkpoint_state.keys():
+                    new_state_dict[k[7:]]=checkpoint_state[k]
+                model.load_state_dict(new_state_dict,strict=True)
+            else:
+                model.load_state_dict(checkpoint_state,strict=True)
+        else:
+            raise FileNotFoundError('')
         if optimizer is not None and checkpoint['optimizer_state'] is not None:
             optimizer.load_state_dict(checkpoint['optimizer_state'])
         logger.info("==> Done")
