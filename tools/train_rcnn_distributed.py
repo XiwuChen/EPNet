@@ -20,6 +20,7 @@ import tools.train_utils.train_utils as train_utils
 from tools.train_utils.fastai_optim import OptimWrapper
 from tools.train_utils import learning_schedules_fastai as lsf
 from tools.train_utils import common_utils
+from tools.eval_rcnn_distributed import repeat_eval_ckpt
 
 parser = argparse.ArgumentParser(description="arg parser")
 parser.add_argument('--cfg_file', type=str, default='cfgs/LI_Fusion_with_attention_use_ce_loss.yaml',
@@ -244,8 +245,7 @@ if __name__ == "__main__":
 
     # create dataloader & network & optimizer
     train_set, train_loader, train_sampler = create_dataloader(logger, training=True, dist=dist_train)
-    if args.train_with_eval:
-        test_set, test_loader, sampler = create_dataloader(logger, training=False, dist=dist_train)
+
     # model = PointRCNN(num_classes=train_loader.dataset.num_class, use_xyz=True, mode='TRAIN')
     fn_decorator = train_functions.model_joint_fn_dist_decorator()
 
@@ -314,3 +314,22 @@ if __name__ == "__main__":
     )
 
     logger.info('**********************End training**********************')
+
+
+    logger.info('**********************Start evaluation**********************')
+    eval_output_dir = os.path.join(root_result_dir , 'eval' , 'eval_with_train')
+    if cfg.LOCAL_RANK ==0:
+        os.makedirs(eval_output_dir,exist_ok=True)
+    args.start_epoch = max(args.epochs - 20, 0)  # Only evaluate the last 10 epochs
+    torch.distributed.barrier()
+    # dist testing
+    if args.train_with_eval:
+        test_set, test_loader, sampler = create_dataloader(logger, training=False, dist=dist_train)
+        repeat_eval_ckpt(model.module if dist_train else model
+                         ,test_loader,
+                         args,eval_output_dir,logger,ckpt_dir=ckpt_dir
+                         )
+        logger.info('**********************End evaluation**********************')
+
+
+

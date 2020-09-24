@@ -251,3 +251,25 @@ class Trainer(object):
 
 
         return None
+
+
+def load_joint_data_to_gpu(data,cfg):
+    sample_id, pts_rect, pts_features, pts_input = \
+        data['sample_id'], data['pts_rect'], data['pts_features'], data['pts_input']
+
+    inputs = torch.from_numpy(pts_input).cuda(non_blocking=True).float()
+
+    input_data = {'pts_input': inputs}
+    # img feature
+    if cfg.LI_FUSION.ENABLED:
+        pts_origin_xy, img = data['pts_origin_xy'], data['img']
+        pts_origin_xy = torch.from_numpy(pts_origin_xy).cuda(non_blocking=True).float()
+        img = torch.from_numpy(img).cuda(non_blocking=True).float().permute((0, 3, 1, 2))
+        input_data['pts_origin_xy'] = pts_origin_xy
+        input_data['img'] = img
+
+    if cfg.RPN.USE_RGB or cfg.RCNN.USE_RGB:
+        pts_rgb = data['rgb']
+        pts_rgb = torch.from_numpy(pts_rgb).cuda(non_blocking=True).float()
+        input_data['pts_rgb'] = pts_rgb
+    return input_data

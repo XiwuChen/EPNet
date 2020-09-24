@@ -34,35 +34,7 @@ def log_print(info, fp = None):
     if fp is not None:
         print(info, file = fp)
 
-
-def save_kitti_format(calib, bbox3d, obj_list, img_shape, save_fp):
-    corners3d = kitti_utils.boxes3d_to_corners3d(bbox3d)
-    img_boxes, _ = calib.corners3d_to_img_boxes(corners3d)
-
-    img_boxes[:, 0] = np.clip(img_boxes[:, 0], 0, img_shape[1] - 1)
-    img_boxes[:, 1] = np.clip(img_boxes[:, 1], 0, img_shape[0] - 1)
-    img_boxes[:, 2] = np.clip(img_boxes[:, 2], 0, img_shape[1] - 1)
-    img_boxes[:, 3] = np.clip(img_boxes[:, 3], 0, img_shape[0] - 1)
-
-    # Discard boxes that are larger than 80% of the image width OR height
-    img_boxes_w = img_boxes[:, 2] - img_boxes[:, 0]
-    img_boxes_h = img_boxes[:, 3] - img_boxes[:, 1]
-    box_valid_mask = np.logical_and(img_boxes_w < img_shape[1] * 0.8, img_boxes_h < img_shape[0] * 0.8)
-
-    for k in range(bbox3d.shape[0]):
-        if box_valid_mask[k] == 0:
-            continue
-        x, z, ry = bbox3d[k, 0], bbox3d[k, 2], bbox3d[k, 6]
-        beta = np.arctan2(z, x)
-        alpha = -np.sign(beta) * np.pi / 2 + beta + ry
-
-        print('%s %.2f %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f' %
-              (args.class_name, obj_list[k].trucation, int(obj_list[k].occlusion), alpha, img_boxes[k, 0],
-               img_boxes[k, 1],
-               img_boxes[k, 2], img_boxes[k, 3],
-               bbox3d[k, 3], bbox3d[k, 4], bbox3d[k, 5], bbox3d[k, 0], bbox3d[k, 1], bbox3d[k, 2],
-               bbox3d[k, 6]), file = save_fp)
-
+from tools.eval_rcnn import save_kitti_format
 
 class AugSceneGenerator(KittiDataset):
     def __init__(self, root_dir, gt_database = None, split = 'train', classes = args.class_name):

@@ -447,6 +447,7 @@ class KittiRCNNDataset(KittiDataset):
         sample_info['rpn_cls_label'] = rpn_cls_label
         sample_info['rpn_reg_label'] = rpn_reg_label
         sample_info['gt_boxes3d'] = aug_gt_boxes3d
+
         return sample_info
 
     def get_rpn_sample(self, index):
@@ -582,6 +583,8 @@ class KittiRCNNDataset(KittiDataset):
         sample_info['rpn_cls_label'] = rpn_cls_label
         sample_info['rpn_reg_label'] = rpn_reg_label
         sample_info['gt_boxes3d'] = aug_gt_boxes3d
+        sample_info['calib'] =calib
+        sample_info['image_shape'] = img_shape
         return sample_info
 
     @staticmethod

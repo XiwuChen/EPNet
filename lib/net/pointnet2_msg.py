@@ -14,21 +14,41 @@ def conv3x3(in_planes, out_planes, stride=1):
                      padding=1, bias=False)
 
 
-class BasicBlock(nn.Module):
-    def __init__(self, inplanes, outplanes, stride=1):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, outplanes, stride)
-        self.bn1 = BatchNorm2d(outplanes)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(outplanes, outplanes, 2 * stride)
+class Conv7x7Block(nn.Module):
+    def __init__(self, inplanes, outplanes, stride=2, use_relu=False):
+        super(Conv7x7Block, self).__init__()
+        if use_relu:
+            self.seq = nn.Sequential(nn.Conv2d(inplanes, outplanes, kernel_size=7, stride=stride,
+                                               padding=3, bias=False),
+                                     BatchNorm2d(outplanes),
+                                     nn.ReLU(inplace=True),
+                                     )
+        else:
+            self.seq = nn.Sequential(nn.Conv2d(inplanes, outplanes, kernel_size=7, stride=stride,
+                                               padding=3, bias=False),
+                                     )
 
     def forward(self, x):
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
+        out = self.seq(x)
+        return out
 
-        out = self.conv2(out)
 
+class BasicBlock(nn.Module):
+    def __init__(self, inplanes, outplanes, stride=1, use_relu=False):
+        super(BasicBlock, self).__init__()
+        if use_relu:
+            self.seq = nn.Sequential(conv3x3(inplanes, outplanes, stride), BatchNorm2d(outplanes),
+                                     nn.ReLU(inplace=True),
+                                     conv3x3(outplanes, outplanes, 2 * stride), BatchNorm2d(outplanes),
+                                     nn.ReLU(inplace=True))
+        else:
+            self.seq = nn.Sequential(conv3x3(inplanes, outplanes, stride), BatchNorm2d(outplanes),
+                                     nn.ReLU(inplace=True),
+                                     conv3x3(outplanes, outplanes, 2 * stride)
+                                     )
+
+    def forward(self, x):
+        out = self.seq(x)
         return out
 
 
@@ -121,8 +141,8 @@ def get_location_img(img, use_location):
     if use_location:
         tmp_img = img
         B, _, H, W = tmp_img.shape
-        H_range, W_range = torch.range(0, H-1).reshape(1, 1, H, 1), \
-                           torch.range(0, W-1).reshape(1, 1, 1, W)
+        H_range, W_range = torch.range(0, H - 1).reshape(1, 1, H, 1), \
+                           torch.range(0, W - 1).reshape(1, 1, 1, W)
         H_range, W_range = H_range.to(tmp_img), W_range.to(tmp_img)
         H_range = H_range / (H - 1.0) * 2.0 - 1.
         W_range = W_range / (W - 1.0) * 2. - 1.
@@ -174,9 +194,15 @@ class Pointnet2MSG(nn.Module):
             self.Fusion_Conv = nn.ModuleList()
             self.DeConv = nn.ModuleList()
             for i in range(len(cfg.LI_FUSION.IMG_CHANNELS) - 1):
-                self.Img_Block.append(
-                    BasicBlock(cfg.LI_FUSION.IMG_CHANNELS[i] + extra_img_channel, cfg.LI_FUSION.IMG_CHANNELS[i + 1],
-                               stride=1))
+                if cfg.LI_FUSION.CONV7 and i == 0:
+                    self.Img_Block.append(
+                        Conv7x7Block(cfg.LI_FUSION.IMG_CHANNELS[i] + extra_img_channel,
+                                     cfg.LI_FUSION.IMG_CHANNELS[i + 1],
+                                     stride=2,use_relu=cfg.LI_FUSION.DOUBLE_RELU))
+                else:
+                    self.Img_Block.append(
+                        BasicBlock(cfg.LI_FUSION.IMG_CHANNELS[i] + extra_img_channel, cfg.LI_FUSION.IMG_CHANNELS[i + 1],
+                                   stride=1,use_relu=cfg.LI_FUSION.DOUBLE_RELU))
                 if cfg.LI_FUSION.ADD_Image_Attention:
                     self.Fusion_Conv.append(
                         Atten_Fusion_Conv(cfg.LI_FUSION.IMG_CHANNELS[i + 1], cfg.LI_FUSION.POINT_CHANNELS[i],
@@ -263,7 +289,7 @@ class Pointnet2MSG(nn.Module):
             # for i in range(1,len(img))
             DeConv = []
             for i in range(len(cfg.LI_FUSION.IMG_CHANNELS) - 1):
-                tmp_img = get_location_img(img[i+1], self.use_location)
+                tmp_img = get_location_img(img[i + 1], self.use_location)
                 DeConv.append(self.DeConv[i](tmp_img))
             de_concat = torch.cat(DeConv, dim=1)
 

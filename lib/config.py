@@ -27,7 +27,7 @@ __C.PC_AREA_SCOPE = np.array([[-40, 40],
                               [-1, 3],
                               [0, 70.4]])  # x, y, z scope in rect camera coords
 
-__C.CLS_MEAN_SIZE = np.array([[1.52, 1.63, 3.88]], dtype = np.float32)
+__C.CLS_MEAN_SIZE = np.array([[1.52, 1.63, 3.88]], dtype=np.float32)
 
 # 0.1 config of use img
 __C.USE_IOU_BRANCH = False
@@ -46,7 +46,8 @@ __C.LI_FUSION.DeConv_Strides = [2, 4, 8, 16]
 __C.LI_FUSION.IMG_FLIP = False
 __C.LI_FUSION.IMG_LOCATION = False
 __C.LI_FUSION.IMG_AUG = False
-
+__C.LI_FUSION.DOUBLE_RELU = False
+__C.LI_FUSION.CONV7 = False
 
 # 1. config of rpn network
 __C.RPN = edict()
@@ -144,7 +145,7 @@ __C.RCNN.REG_FC = [256, 256]
 __C.RCNN.LOSS_CLS = 'BinaryCrossEntropy'
 __C.RCNN.FOCAL_ALPHA = [0.25, 0.75]
 __C.RCNN.FOCAL_GAMMA = 2.0
-__C.RCNN.CLS_WEIGHT = np.array([1.0, 1.0, 1.0], dtype = np.float32)
+__C.RCNN.CLS_WEIGHT = np.array([1.0, 1.0, 1.0], dtype=np.float32)
 __C.RCNN.CLS_FG_THRESH = 0.6
 __C.RCNN.CLS_BG_THRESH = 0.45
 __C.RCNN.CLS_BG_THRESH_LO = 0.05
@@ -236,7 +237,7 @@ def _merge_a_into_b(a, b):
         old_type = type(b[k])
         if old_type is not type(v):
             if isinstance(b[k], np.ndarray):
-                v = np.array(v, dtype = b[k].dtype)
+                v = np.array(v, dtype=b[k].dtype)
             else:
                 raise ValueError(('Type mismatch ({} vs. {}) '
                                   'for config key: {}').format(type(b[k]), type(v), k))
@@ -262,7 +263,7 @@ def cfg_from_list(cfg_list):
             assert subkey in d
             d = d[subkey]
         subkey = key_list[-1]
-        assert subkey in d, '%s'%subkey
+        assert subkey in d, '%s' % subkey
         try:
             value = literal_eval(v)
         except:
@@ -273,7 +274,7 @@ def cfg_from_list(cfg_list):
         d[subkey] = value
 
 
-def save_config_to_file(cfg, pre = 'cfg', logger = None):
+def save_config_to_file(cfg, pre='cfg', logger=None):
     for key, val in cfg.items():
         if isinstance(cfg[key], edict):
             if logger is not None:
@@ -281,7 +282,7 @@ def save_config_to_file(cfg, pre = 'cfg', logger = None):
             else:
                 pass
                 # print('\n%s.%s = edict()' % (pre, key))
-            save_config_to_file(cfg[key], pre = pre + '.' + key, logger = logger)
+            save_config_to_file(cfg[key], pre=pre + '.' + key, logger=logger)
             continue
 
         if logger is not None:
