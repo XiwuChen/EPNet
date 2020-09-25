@@ -502,11 +502,11 @@ def eval_one_epoch_joint(model, dataloader, epoch_id, result_dir, logger, args):
 
     final_output_dir = os.path.join(result_dir, 'final_result', 'data')
     os.makedirs(final_output_dir, exist_ok=True)
+    roi_output_dir = os.path.join(result_dir, 'roi_result', 'data')
+    refine_output_dir = os.path.join(result_dir, 'refine_result', 'data')
+    rpn_output_dir = os.path.join(result_dir, 'rpn_result', 'data')
 
     if args.save_result:
-        roi_output_dir = os.path.join(result_dir, 'roi_result', 'data')
-        refine_output_dir = os.path.join(result_dir, 'refine_result', 'data')
-        rpn_output_dir = os.path.join(result_dir, 'rpn_result', 'data')
         os.makedirs(rpn_output_dir, exist_ok=True)
         os.makedirs(roi_output_dir, exist_ok=True)
         os.makedirs(refine_output_dir, exist_ok=True)

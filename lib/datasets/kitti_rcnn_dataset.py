@@ -385,6 +385,8 @@ class KittiRCNNDataset(KittiDataset):
 
         sample_info = {'sample_id': sample_id, 'random_select': self.random_select
                        }
+        sample_info['calib'] = calib
+        sample_info['image_shape'] = img_shape
 
         if self.mode == 'TEST':
             if cfg.RPN.USE_INTENSITY:
@@ -394,6 +396,7 @@ class KittiRCNNDataset(KittiDataset):
             sample_info['pts_input'] = pts_input
             sample_info['pts_rect'] = ret_pts_rect
             sample_info['pts_features'] = ret_pts_features
+
 
             return sample_info
 
@@ -583,7 +586,7 @@ class KittiRCNNDataset(KittiDataset):
         sample_info['rpn_cls_label'] = rpn_cls_label
         sample_info['rpn_reg_label'] = rpn_reg_label
         sample_info['gt_boxes3d'] = aug_gt_boxes3d
-        sample_info['calib'] =calib
+        sample_info['calib'] = calib
         sample_info['image_shape'] = img_shape
         return sample_info
 
