@@ -48,6 +48,9 @@ __C.LI_FUSION.IMG_LOCATION = False
 __C.LI_FUSION.IMG_AUG = False
 __C.LI_FUSION.DOUBLE_RELU = False
 __C.LI_FUSION.CONV7 = False
+__C.LI_FUSION.LAYER_NUM = 2
+__C.LI_FUSION.LOCAL_CONV = False
+__C.LI_FUSION.ORI = 'w'
 
 # 1. config of rpn network
 __C.RPN = edict()

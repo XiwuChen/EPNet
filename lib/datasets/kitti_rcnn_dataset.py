@@ -10,6 +10,7 @@ from lib.config import cfg
 from torch.nn.functional import grid_sample
 from lib.datasets.img_trans_builder import build_transforms
 from PIL import Image
+from lib.datasets.img_shift import shift_img
 
 
 def interpolate_img_by_xy(img, xy, normal_shape):
@@ -397,7 +398,6 @@ class KittiRCNNDataset(KittiDataset):
             sample_info['pts_rect'] = ret_pts_rect
             sample_info['pts_features'] = ret_pts_features
 
-
             return sample_info
 
         gt_obj_list = self.filtrate_objects(self.get_label(sample_id))
@@ -427,6 +427,9 @@ class KittiRCNNDataset(KittiDataset):
                                                                                   gt_alpha,
                                                                                   sample_id)
             sample_info['aug_method'] = aug_method
+
+        # if cfg.LI_FUSION.IMG_SHIFT:
+        #     img, ret_pts_origin_xy = shift_img(img, h_size=100, ret_pts_origin_xy=ret_pts_origin_xy)
         sample_info.update({'pts_origin_xy': ret_pts_origin_xy, 'img': img})
         # prepare input
         if cfg.RPN.USE_INTENSITY:
@@ -1379,9 +1382,36 @@ class KittiRCNNDataset(KittiDataset):
 
 
 if __name__ == '__main__':
-    img = np.array([0, 0, 0, 0, 5, 2.]).reshape(3, 2, 1)
-    print(img[2, 0])
+    print(os.listdir())
+    DATA_PATH = './data/'
 
-    xy = np.array([2., 0.5]).reshape(1, 2)
-    y = interpolate_img_by_xy(img, xy, np.array([3., 2.]))
-    print(y)
+
+    class Logger():
+        def info(self, x):
+            print(x)
+
+
+    cfg.LI_FUSION.ENABLED = True
+    logger = Logger()
+    dataset = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.SPLIT,
+                               mode='TRAIN',
+                               logger=logger,
+                               classes=cfg.CLASSES,
+                               rcnn_training_roi_dir=None,
+                               rcnn_training_feature_dir=None,
+                               gt_database_dir=None)
+    max_h, min_h = 0, 10000
+    max_h_list, min_h_list = [], []
+    for i in dataset:
+        xy = i['pts_origin_xy']
+        temp_max_h, temp_min_h = xy[:, 1].max(), xy[:, 1].min()
+        print(temp_max_h, temp_min_h)
+        max_h_list.append(temp_max_h)
+        min_h_list.append(temp_min_h)
+    max_h = max(max_h_list)
+    min_h = min(min_h_list)
+    print("************************")
+    print(max_h, min_h)
+    import pickle
+    with open('height','wb+') as f:
+        pickle.dump({'max_h':max_h_list,'min_h':min_h_list},f)

@@ -1,0 +1,10 @@
+CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 train_rcnn_dist.py --launcher pytorch\
+  --cfg_file cfgs/LI_Fusion_with_attention_use_ce_loss.yaml --batch_size 6 \
+  --train_mode rcnn_online --epochs 50 --mgpus --ckpt_save_interval 1 \
+  --output_dir ./log/Car/full_epnet_wiou_branch_dist2_6_layer1_avgpool/ --workers=0 \
+  --set LI_FUSION.ENABLED True LI_FUSION.ADD_Image_Attention True RCNN.POOL_EXTRA_WIDTH 0.2 RPN.SCORE_THRESH 0.2 RCNN.SCORE_THRESH 0.2 USE_IOU_BRANCH True TRAIN.CE_WEIGHT 5.0 LI_FUSION.LAYER_NUM 1
+
+CUDA_VISIBLE_DEVICES=0 python eval_rcnn.py --cfg_file cfgs/LI_Fusion_with_attention_use_ce_loss.yaml\
+ --eval_all --start_epoch 40 --eval_mode rcnn_online    --output_dir ./log/Car/full_epnet_wiou_branch_dist2_6_local_conv8/ \
+ --ckpt_dir ./log/Car/full_epnet_wiou_branch_dist2_6_local_conv8/ckpt --set  LI_FUSION.ENABLED True LI_FUSION.ADD_Image_Attention True RCNN.POOL_EXTRA_WIDTH 0.2\
+  RPN.SCORE_THRESH 0.2 RCNN.SCORE_THRESH 0.2  USE_IOU_BRANCH True  LI_FUSION.LOCAL_CONV True
